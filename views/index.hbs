@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Freebox Status</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka&display=swap" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/theme/dark.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+
+            width: 100vw;
+            height: 100vh;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+
+            background: #212121;
+
+            overflow: hidden;
+
+            color: #ffffff;
+            font-family: 'Fredoka', sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Actual Status: {{alive.status}}</h1>
+<h2>Minutes Up: {{count.online}}</h2>
+<h2>Minutes Down: {{count.offline}}</h2>
+<div id="graph" style="width: 100vw; height: 250px;"></div>
+
+<script>
+    const data = JSON.parse('{{{dataJSON}}}');
+    document.getElementById("graph").style.height = (data.chart.length * 200) + 50 + "px";
+
+    console.log(data);
+
+    const chartDom = document.getElementById("graph");
+    const myChart = echarts.init(chartDom, "dark");
+
+    option = {
+        backgroundColor: '#212121',
+        grid: {
+            top: "38%",
+        },
+        tooltip: {
+            position: 'bottom'
+        },
+        visualMap: {
+            min: 0,
+            max: 24 * 60,
+            calculable: true,
+            orient: 'horizontal',
+            left: 'center',
+            top: 'top',
+            inRange: {
+                color: ['#4CAF50', '#F44336']
+            },
+        },
+        calendar: data.chart.map((e, index) => ({
+            top: index * 200 + 100,
+            range: e[0],
+            cellSize: ['auto', 20]
+        })),
+        series: data.chart.map((e, index) => ({
+            type: 'heatmap',
+            coordinateSystem: 'calendar',
+            calendarIndex: index,
+            data: e[1]
+        }))
+    };
+
+    option && myChart.setOption(option);
+</script>
+</body>
+</html>
