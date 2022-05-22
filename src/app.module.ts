@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Uptime, UptimeSchema } from './schemas/uptime.schema';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { Uptime, UptimeSchema } from './schemas/uptime.schema';
     ScheduleModule.forRoot(),
     MongooseModule.forRoot(process.env.DB_URI),
     MongooseModule.forFeature([{ name: Uptime.name, schema: UptimeSchema }]),
+    HttpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

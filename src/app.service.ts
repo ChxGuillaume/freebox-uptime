@@ -5,6 +5,7 @@ import * as moment from 'moment';
 import { Status, Uptime, UptimeDocument } from './schemas/uptime.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class AppService {
@@ -12,6 +13,7 @@ export class AppService {
 
   constructor(
     private schedulerRegistry: SchedulerRegistry,
+    private httpService: HttpService,
     @InjectModel(Uptime.name)
     private uptimeDocumentModel: Model<UptimeDocument>,
   ) {
@@ -39,6 +41,30 @@ export class AppService {
       });
 
       await uptimeDocument.save();
+
+      if (process.env.WEBHOOK_URI) {
+        const title = isAlive === 'offline' ? '🔴 Offline' : '🟢 Online';
+
+        const description =
+          isAlive === 'offline'
+            ? 'Freebox is now offline'
+            : 'Freebox is now online';
+
+        const color = isAlive === 'offline' ? 0xda2d43 : 0x76ae58;
+
+        this.httpService
+          .post(process.env.WEBHOOK_URI, {
+            embeds: [
+              {
+                title,
+                description,
+                color,
+                timestamp: new Date(),
+              },
+            ],
+          })
+          .subscribe();
+      }
     }
 
     this.lastSeen = {
