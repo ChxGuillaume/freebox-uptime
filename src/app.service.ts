@@ -1,33 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { LastStatus, Status } from './types/Status.type';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import * as ping from 'ping';
 import * as moment from 'moment';
-import { Moment } from 'moment';
+import { Status, Uptime, UptimeDocument } from './schemas/uptime.schema';
+import { Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class AppService {
-  private lastSeen: LastStatus;
+  private lastSeen: Uptime;
 
-  constructor(private schedulerRegistry: SchedulerRegistry) {
+  constructor(
+    private schedulerRegistry: SchedulerRegistry,
+    @InjectModel(Uptime.name)
+    private uptimeDocumentModel: Model<UptimeDocument>,
+  ) {
     this.isAliveCheck().then();
 
     this.schedulerRegistry.addInterval(
       'isAlive',
       setInterval(async () => {
         await this.isAliveCheck();
-        console.log(this.lastSeen);
       }, 1000 * 30),
     );
   }
 
-  getLastSeen(): LastStatus {
+  getLastSeen(): Uptime {
     return this.lastSeen;
   }
 
   private async isAliveCheck(): Promise<void> {
+    const isAlive = await this.isAlive();
+
+    if (!this.lastSeen || this.lastSeen.status !== isAlive) {
+      const uptimeDocument = new this.uptimeDocumentModel({
+        status: isAlive,
+        time: moment().format(),
+      });
+
+      await uptimeDocument.save();
+    }
+
     this.lastSeen = {
-      status: await this.isAlive(),
+      status: isAlive,
       time: moment().format(),
     };
   }
@@ -57,10 +72,8 @@ export class AppService {
     });
   }
 
-  private lastHour: Moment = moment();
-
-  createChartData() {
-    const data = this.dataForTest(400);
+  async createChartData() {
+    const data = await this.uptimeDocumentModel.find();
 
     data.sort((a, b) => moment(a.time).diff(moment(b.time)));
     const chartData = this.formatChartData(data);
@@ -83,17 +96,10 @@ export class AppService {
       },
     );
 
-    const test = new Map<string, number>();
-    test.set('online', 0);
-    test.set('offline', 0);
-    test.set('unknown', 0);
-
     return { chart: this.createChart(chartData), count };
   }
 
-  private createChart(
-    rawData: [LastStatus[]],
-  ): (string | [string, number][])[][] {
+  private createChart(rawData: [Uptime[]]): (string | [string, number][])[][] {
     const firstDate = moment(rawData[0][0].time).set({
       dayOfYear: 1,
       hour: 0,
@@ -203,11 +209,11 @@ export class AppService {
     });
   }
 
-  private formatChartData(rawData: LastStatus[]): [LastStatus[]] {
-    const data: [LastStatus[]] = [[rawData[0]]];
+  private formatChartData(rawData: Uptime[]): [Uptime[]] {
+    const data: [Uptime[]] = [[rawData[0]]];
 
-    rawData.forEach((status: LastStatus) => {
-      const lastStatusArray: LastStatus[] = data[data.length - 1];
+    rawData.forEach((status: Uptime) => {
+      const lastStatusArray: Uptime[] = data[data.length - 1];
 
       if (lastStatusArray.length === 2) {
         data.push([status]);
@@ -222,55 +228,10 @@ export class AppService {
     });
 
     if (data[data.length - 1].length % 2 === 1) {
-      data.pop();
-    }
-
-    return data;
-  }
-
-  private dataForTest(count): LastStatus[] {
-    const data: LastStatus[] = [];
-    const statusList: Status[] = [
-      Status.Online,
-      Status.Online,
-      Status.Online,
-      Status.Online,
-      Status.Online,
-      Status.Online,
-      Status.Online,
-      Status.Online,
-      Status.Offline,
-      Status.Offline,
-      Status.Offline,
-      Status.Offline,
-      Status.Unknown,
-    ];
-
-    this.lastHour = moment().set({
-      dayOfYear: 1,
-      hour: 0,
-      minute: 0,
-      second: 0,
-    });
-
-    for (let i = 0; i < count; i++) {
-      const lastStatus = data[data.length - 1];
-      const randomStatus =
-        statusList[Math.floor(Math.random() * statusList.length)];
-
-      if (lastStatus && randomStatus !== lastStatus?.status) {
-        data.push({
-          status: lastStatus?.status,
-          time: this.lastHour.format(),
-        });
-      }
-
-      data.push({
-        status: randomStatus,
-        time: this.lastHour.format(),
+      data[data.length - 1].push({
+        status: data[data.length - 1][0]?.status,
+        time: moment().format(),
       });
-
-      this.lastHour.add(Math.round(Math.random() * 100) + 1, 'hour');
     }
 
     return data;

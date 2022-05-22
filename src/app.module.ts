@@ -3,9 +3,16 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Uptime, UptimeSchema } from './schemas/uptime.schema';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), ConfigModule.forRoot()],
+  imports: [
+    ConfigModule.forRoot(),
+    ScheduleModule.forRoot(),
+    MongooseModule.forRoot(process.env.DB_URI),
+    MongooseModule.forFeature([{ name: Uptime.name, schema: UptimeSchema }]),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

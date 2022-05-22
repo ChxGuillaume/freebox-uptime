@@ -8,7 +8,7 @@ export class AppController {
   @Get()
   @Render('index')
   async isAlive() {
-    const data = this.appService.createChartData();
+    const data = await this.appService.createChartData();
 
     return {
       alive: await this.appService.getLastSeen(),
