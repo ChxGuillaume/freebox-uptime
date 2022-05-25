@@ -83,7 +83,16 @@ export class AppService {
   }
 
   private async isFreeboxAlive(): Promise<boolean> {
-    return await this.pingHost(process.env.FREEBOX_IP);
+    return new Promise((resolve) => {
+      this.httpService.get(process.env.FREEBOX_URI).subscribe(
+        () => {
+          resolve(true);
+        },
+        () => {
+          resolve(false);
+        },
+      );
+    });
   }
 
   private async isInternetAlive(): Promise<boolean> {
